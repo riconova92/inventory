@@ -11,27 +11,27 @@ class PackingListDelivery(Document):
 		count = 0
 
 
-		if self.item_code_variant and self.yard :
+		if self.item_code_variant and self.yard_atau_meter :
 			parent_item = frappe.get_doc("Item", self.item_code_variant).variant_of
 			item_name = frappe.get_doc("Item", self.item_code_variant).item_name
 			if self.packing_list_data :
 				for i in self.packing_list_data :
-					if i.item_code_variant == self.item_code_variant and i.yard_per_roll == self.yard and i.group == "" and i.warehouse == self.warehouse and i.colour == self.colour :
+					if i.item_code_variant == self.item_code_variant and i.yard_per_roll == self.yard_atau_meter and i.group == "" and i.warehouse == self.warehouse and i.colour == self.colour :
 						count = 1
 
 				if count == 1 :
 					for i in self.packing_list_data :
-						if i.item_code_variant == self.item_code_variant and i.yard_per_roll == self.yard and i.group == "" and i.warehouse == self.warehouse and i.colour == self.colour  :
+						if i.item_code_variant == self.item_code_variant and i.yard_per_roll == self.yard_atau_meter and i.group == "" and i.warehouse == self.warehouse and i.colour == self.colour  :
 							new_total_yard = i.total_yard
 							new_total_roll = i.total_roll
 							i.total_roll = new_total_roll + 1
-							i.total_yard = new_total_yard + self.yard
+							i.total_yard = new_total_yard + self.yard_atau_meter
 				
 				else :
 					pp_so = self.append('packing_list_data', {})
 					pp_so.item_code_variant = self.item_code_variant
-					pp_so.yard_per_roll = self.yard
-					pp_so.total_yard = self.yard
+					pp_so.yard_per_roll = self.yard_atau_meter
+					pp_so.total_yard = self.yard_atau_meter
 					pp_so.total_roll = 1
 					pp_so.parent_item = parent_item
 					pp_so.item_name = item_name
@@ -42,8 +42,8 @@ class PackingListDelivery(Document):
 			else :
 				pp_so = self.append('packing_list_data', {})
 				pp_so.item_code_variant = self.item_code_variant
-				pp_so.yard_per_roll = self.yard
-				pp_so.total_yard = self.yard
+				pp_so.yard_per_roll = self.yard_atau_meter
+				pp_so.total_yard = self.yard_atau_meter
 				pp_so.total_roll = 1
 				pp_so.parent_item = parent_item
 				pp_so.item_name = item_name

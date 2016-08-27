@@ -3,11 +3,13 @@
  "allow_import": 0, 
  "allow_rename": 0, 
  "autoname": "field:item_code", 
+ "beta": 0, 
  "creation": "2016-07-18 08:38:47.775918", 
  "custom": 0, 
  "docstatus": 0, 
  "doctype": "DocType", 
- "document_type": "Document", 
+ "document_type": "", 
+ "editable_grid": 0, 
  "fields": [
   {
    "allow_on_submit": 0, 
@@ -117,13 +119,14 @@
  "hide_heading": 0, 
  "hide_toolbar": 0, 
  "idx": 0, 
+ "image_view": 0, 
  "in_create": 1, 
  "in_dialog": 0, 
  "is_submittable": 0, 
  "issingle": 0, 
  "istable": 0, 
  "max_attachments": 0, 
- "modified": "2016-08-05 11:34:26.411614", 
+ "modified": "2016-08-15 08:13:30.726912", 
  "modified_by": "Administrator", 
  "module": "Inventory", 
  "name": "Master Inventory", 
@@ -151,9 +154,11 @@
    "write": 1
   }
  ], 
+ "quick_entry": 0, 
  "read_only": 1, 
  "read_only_onload": 0, 
  "search_fields": "item_code", 
  "sort_field": "modified", 
- "sort_order": "DESC"
+ "sort_order": "DESC", 
+ "track_seen": 0
 }

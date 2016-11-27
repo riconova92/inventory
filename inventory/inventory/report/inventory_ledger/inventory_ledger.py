@@ -6,62 +6,113 @@ import frappe
 
 def execute(filters=None):
 	columns, data = [], []
-	columns = [
-
-	"DocType:Data:100",
-	"DocType No:Data:100",
-	"Posting Date:Date:100",
-	"Item Code Variant:Data:150",
-	"UOM:Data:100",
-	"Warehouse:Data:150",
-	"Yard / Meter per Roll:Float:100",
-
-	"(In)Qty Yard / Meter:Float:100",
-	"(in)Qty Roll:Int:100",
-
-	"(out)Qty Yard / Meter:Float:100",
-	"(out)Qty Roll:Int:100",
-	"Colour:Data:100"
-
-	]
+	columns = ["Item Code:Link/Item:100","Colour:Link/Colour:100","Yard/Meter:Float:100","Group:Data:100",
+		"In Qty:Float:100","Out Qty:Float:100","Document:Link/DocType:100","Document No:Dynamic Link/Document:100"]
 	
-	doctype_clause = ""
-	date_clause = ""
+	item_clause = ""
+	if filters.get("item") :
+		item_clause = """ AND j.`item_code_variant` = "{0}" """.format(filters.get("item"))
 	
-	if filters.get("type") :
-		doctype_clause = """ AND il.`doctype_type`="{0}" """.format(filters.get("type"))
-	if filters.get("from_date") and filters.get("to_date") :
-		date_clause = """ AND il.`posting_date` BETWEEN '{0}' AND '{1}' """.format(filters.get("from_date"),filters.get("to_date"))
+	document_no_clause = ""
+	if filters.get("document_no") :
+		document_no_clause = """ AND i.`name`="{0}" """.format(filters.get("document_no"))
+	data = []
+	if not filters.get("document") :
+		new_data = frappe.db.sql(""" 
+			SELECT j.`item_code_variant`,j.`colour`,j.`yard_atau_meter_per_roll`,j.`group`,j.`total_roll`,0,
+				"Packing List Receipt",i.`name` FROM `tabPacking List Receipt`i JOIN `tabPacking List Receipt Data`j ON i.`name`=j.`parent`
+				WHERE i.`docstatus`=1
+				{0} {1}
+				ORDER BY j.`item_code_variant`,j.`colour`,j.`yard_atau_meter_per_roll`,j.`group`
+				""".format(document_no_clause,item_clause),as_list=1)
+		data = data + new_data		
+		
+		new_data = frappe.db.sql(""" 
+			SELECT j.`item_code_variant`,j.`colour`,j.`yard_atau_meter_per_roll`,j.`group`,0,j.`total_roll`,
+				"Packing List Receipt",i.`name` FROM `tabPacking List Delivery`i JOIN `tabPacking List Delivery Data`j ON i.`name`=j.`parent`
+				WHERE i.`docstatus`=1
+				{0} {1}
+				ORDER BY j.`item_code_variant`,j.`colour`,j.`yard_atau_meter_per_roll`,j.`group`
+			""".format(document_no_clause,item_clause),as_list=1)
+		data = data + new_data
+		
+		new_data = frappe.db.sql("""
+			SELECT * FROM 
+				(
+				SELECT j.`item_code_roll`,j.`colour`,j.`yard_atau_meter_per_roll`,j.`group`,j.`total_roll` AS `in_qty`, 0 AS `out_qty`,"Stock Recon Inventory" AS `document`,i.`name` 
+				FROM `tabStock Recon Inventory`i JOIN `tabStock Recon Inventory Item`j ON i.`name`=j.`parent` WHERE i.`docstatus`=1 {0} {1}
+				
+				UNION ALL 
+				
+				SELECT j.`item_code_roll`,j.`colour`,j.`yard_atau_meter_per_roll`,j.`group`,0 AS `in_qty`, j.`total_roll` AS `out_qty`,"Stock Recon Inventory" AS `document`,i.`name` 
+				FROM `tabStock Recon Inventory`i JOIN `tabStock Recon Inventory Item Out`j ON i.`name`=j.`parent` WHERE i.`docstatus`=1 {0} {1}
+				)d 
+				ORDER BY d.`item_code_roll`,d.`colour`,d.`yard_atau_meter_per_roll`,d.`group`
+			""".format(document_no_clause,item_clause),as_list=1)
+		data = data + new_data
+		
+		new_data = frappe.db.sql("""
+			SELECT * FROM
+				(
+				SELECT j.`item_code_variant`,j.`colour`,j.`yard_atau_meter_per_roll`,j.`group`,j.`total_roll` AS `in_qty`,0 AS `out_qty`,"Repack Inventory",i.`name` 
+				FROM `tabRepack Inventory`i JOIN `tabRepack Inventory Item`j ON i.`name`=j.`parent` WHERE i.`docstatus`=1 AND j.`status`="To" {0} {1}
+
+				UNION ALL
+				
+				SELECT j.`item_code_variant`,j.`colour`,j.`yard_atau_meter_per_roll`,j.`group`,0 AS `in_qty`,j.`total_roll` AS `out_qty`,"Repack Inventory",i.`name` 
+				FROM `tabRepack Inventory`i JOIN `tabRepack Inventory Item`j ON i.`name`=j.`parent` WHERE i.`docstatus`=1 AND j.`status`="From" {0} {1}
+				)d
+				
+				ORDER BY d.`item_code_variant`,d.`colour`,d.`yard_atau_meter_per_roll`,d.`group`
+
+			""".format(document_no_clause,item_clause),as_list=1)
+		data = data + new_data
+		
+	elif filters.get("document") == "Packing List Receipt" :
+		data = frappe.db.sql(""" 
+			SELECT j.`item_code_variant`,j.`colour`,j.`yard_atau_meter_per_roll`,j.`group`,j.`total_roll`,0,
+				"Packing List Receipt",i.`name` FROM `tabPacking List Receipt`i JOIN `tabPacking List Receipt Data`j ON i.`name`=j.`parent`
+				WHERE i.`docstatus`=1
+				{0} {1}
+				ORDER BY j.`item_code_variant`,j.`colour`,j.`yard_atau_meter_per_roll`,j.`group`
+				""".format(document_no_clause,item_clause),as_list=1)
+	elif filters.get("document") == "Packing List Delivery" :
+		data = frappe.db.sql(""" 
+			SELECT j.`item_code_variant`,j.`colour`,j.`yard_atau_meter_per_roll`,j.`group`,0,j.`total_roll`,
+				"Packing List Receipt",i.`name` FROM `tabPacking List Delivery`i JOIN `tabPacking List Delivery Data`j ON i.`name`=j.`parent`
+				WHERE i.`docstatus`=1
+				{0} {1}
+				ORDER BY j.`item_code_variant`,j.`colour`,j.`yard_atau_meter_per_roll`,j.`group`
+			""".format(document_no_clause,item_clause),as_list=1)
+	elif filters.get("document") == "Stock Recon Inventory" :
+		data = frappe.db.sql("""
+			SELECT * FROM 
+				(
+				SELECT j.`item_code_roll`,j.`colour`,j.`yard_atau_meter_per_roll`,j.`group`,j.`total_roll` AS `in_qty`, 0 AS `out_qty`,"Stock Recon Inventory" AS `document`,i.`name` 
+				FROM `tabStock Recon Inventory`i JOIN `tabStock Recon Inventory Item`j ON i.`name`=j.`parent` WHERE i.`docstatus`=1 {0} {1}
+				
+				UNION ALL 
+				
+				SELECT j.`item_code_roll`,j.`colour`,j.`yard_atau_meter_per_roll`,j.`group`,0 AS `in_qty`, j.`total_roll` AS `out_qty`,"Stock Recon Inventory" AS `document`,i.`name` 
+				FROM `tabStock Recon Inventory`i JOIN `tabStock Recon Inventory Item Out`j ON i.`name`=j.`parent` WHERE i.`docstatus`=1 {0} {1}
+				)d 
+				ORDER BY d.`item_code_roll`,d.`colour`,d.`yard_atau_meter_per_roll`,d.`group`
+			""".format(document_no_clause,item_clause),as_list=1)
+	elif filters.get("document") == "Repack Inventory" :
+		data = frappe.db.sql("""
+			SELECT * FROM
+				(
+				SELECT j.`item_code_variant`,j.`colour`,j.`yard_atau_meter_per_roll`,j.`group`,j.`total_roll` AS `in_qty`,0 AS `out_qty`,"Repack Inventory",i.`name` 
+				FROM `tabRepack Inventory`i JOIN `tabRepack Inventory Item`j ON i.`name`=j.`parent` WHERE i.`docstatus`=1 AND j.`status`="To" {0} {1}
+
+				UNION ALL
+				
+				SELECT j.`item_code_variant`,j.`colour`,j.`yard_atau_meter_per_roll`,j.`group`,0 AS `in_qty`,j.`total_roll` AS `out_qty`,"Repack Inventory",i.`name` 
+				FROM `tabRepack Inventory`i JOIN `tabRepack Inventory Item`j ON i.`name`=j.`parent` WHERE i.`docstatus`=1 AND j.`status`="From" {0} {1}
+				)d
+				
+				ORDER BY d.`item_code_variant`,d.`colour`,d.`yard_atau_meter_per_roll`,d.`group`
+
+			""".format(document_no_clause,item_clause),as_list=1)
 	
-	
-	data = frappe.db.sql(""" 
-		SELECT 
-
-		il.`doctype_type`,
-		il.`doctype_no`,
-		il.`posting_date`,
-		ild.`item_code_variant`,
-		ild.`inventory_uom`,
-		ild.`warehouse`,
-		ild.`yard_atau_meter_per_roll`,
-		ild.`qty_yard_atau_meter`,
-		ild.`qty_roll`,
-		ild.`colour` 
-
-		FROM `tabInventory Ledger`il 
-		JOIN `tabInventory Ledger Data`ild
-		WHERE il.`is_cancelled`=0 
-		AND il.`name` = ild.`parent` {0} {1} """.format(doctype_clause,date_clause),as_list=1)
-
-	temp_data = []
-
-	for i in data :
-		if i[0] == "Packing List Receipt" :
-			
-			temp_data.append([i[0],i[1],i[2],i[3],i[4],i[5],i[6],i[7],i[8],0,0,i[9]])
-
-		else :
-			temp_data.append([i[0],i[1],i[2],i[3],i[4],i[5],i[6],0,0,i[7],i[8],i[9]])
-
-	
-	return columns, temp_data
+	return columns, data
